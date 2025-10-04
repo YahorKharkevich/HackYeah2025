@@ -7,6 +7,9 @@ import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Bundle;
 import android.view.View;
+import android.webkit.WebSettings;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -15,14 +18,14 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
-import com.google.android.gms.maps.CameraUpdateFactory;
-import com.google.android.gms.maps.GoogleMap;
-import com.google.android.gms.maps.OnMapReadyCallback;
-import com.google.android.gms.maps.SupportMapFragment;
-import com.google.android.gms.maps.model.LatLng;
-import com.google.android.gms.maps.model.MarkerOptions;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+import java.util.Locale;
 
-public class MainActivity extends AppCompatActivity implements LocationListener, OnMapReadyCallback {
+public class MainActivity extends AppCompatActivity implements LocationListener {
 
     private Button scanButton;
     private Button settingsButton;
@@ -37,11 +40,12 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
     private static final int LOCATION_PERMISSION_REQUEST_CODE = 1001;
     private boolean isLocationEnabled = false;
     
-    // Карта
-    private GoogleMap googleMap;
-    private SupportMapFragment mapFragment;
-    private LatLng currentLocation;
-    private boolean isMapReady = false;
+    // Карта LocationIQ
+    private WebView mapWebView;
+    private boolean isMapLoaded = false;
+    private double currentLatitude;
+    private double currentLongitude;
+    private static final String LOCATIONIQ_PLACEHOLDER = "YOUR_LOCATIONIQ_API_KEY";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -65,6 +69,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
         statusText = findViewById(R.id.statusText);
         locationText = findViewById(R.id.locationText);
         accuracyText = findViewById(R.id.accuracyText);
+        mapWebView = findViewById(R.id.mapWebView);
         
         // Инициализация LocationManager
         locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
@@ -94,26 +99,66 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
     }
     
     private void initMap() {
-        mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.mapFragment);
-        if (mapFragment != null) {
-            mapFragment.getMapAsync(this);
+        if (mapWebView == null) {
+            return;
         }
+
+        WebSettings webSettings = mapWebView.getSettings();
+        webSettings.setJavaScriptEnabled(true);
+        webSettings.setDomStorageEnabled(true);
+
+        mapWebView.setWebViewClient(new WebViewClient() {
+            @Override
+            public void onPageFinished(WebView view, String url) {
+                super.onPageFinished(view, url);
+                isMapLoaded = true;
+                Toast.makeText(MainActivity.this, "Карта готова", Toast.LENGTH_SHORT).show();
+
+                if (isLocationEnabled) {
+                    updateMapLocation(currentLatitude, currentLongitude);
+                } else {
+                    // Установка начального местоположения (Москва)
+                    updateMapLocation(55.7558, 37.6176);
+                }
+            }
+        });
+
+        loadLocationIqMap();
     }
-    
-    @Override
-    public void onMapReady(@NonNull GoogleMap map) {
-        googleMap = map;
-        isMapReady = true;
-        
-        // Настройка карты
-        googleMap.getUiSettings().setZoomControlsEnabled(true);
-        googleMap.getUiSettings().setMyLocationButtonEnabled(true);
-        
-        // Установка начального местоположения (Москва)
-        LatLng moscow = new LatLng(55.7558, 37.6176);
-        googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(moscow, 10));
-        
-        Toast.makeText(this, "Карта готова", Toast.LENGTH_SHORT).show();
+
+    private void loadLocationIqMap() {
+        String apiKey = getString(R.string.locationiq_api_key);
+        if (apiKey == null) {
+            apiKey = "";
+        }
+
+        if (LOCATIONIQ_PLACEHOLDER.equals(apiKey)) {
+            Toast.makeText(this, "Укажите ключ LocationIQ в strings.xml", Toast.LENGTH_LONG).show();
+        }
+
+        try (InputStream inputStream = getAssets().open("locationiq_map.html");
+             InputStreamReader inputStreamReader = new InputStreamReader(inputStream, StandardCharsets.UTF_8);
+             BufferedReader reader = new BufferedReader(inputStreamReader)) {
+
+            StringBuilder builder = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                builder.append(line).append('\n');
+            }
+
+            final String html = builder.toString()
+                    .replace("LOCATIONIQ_API_KEY_PLACEHOLDER", apiKey != null ? apiKey : "");
+
+            mapWebView.loadDataWithBaseURL(
+                    "https://maps.locationiq.com",
+                    html,
+                    "text/html",
+                    "UTF-8",
+                    null
+            );
+        } catch (IOException e) {
+            Toast.makeText(this, "Не удалось загрузить карту LocationIQ", Toast.LENGTH_SHORT).show();
+        }
     }
     
     private void toggleScanning() {
@@ -127,7 +172,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
     private void startScanning() {
         isScanning = true;
         scanButton.setText("Остановить сканирование");
-        scanButton.setBackgroundColor(getResources().getColor(android.R.color.holo_red_light));
+        scanButton.setBackgroundColor(ContextCompat.getColor(this, android.R.color.holo_red_light));
         statusText.setText("Сканирование активно...");
         
         Toast.makeText(this, "Сканирование запущено", Toast.LENGTH_SHORT).show();
@@ -136,7 +181,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
     private void stopScanning() {
         isScanning = false;
         scanButton.setText("Начать сканирование");
-        scanButton.setBackgroundColor(getResources().getColor(android.R.color.holo_green_light));
+        scanButton.setBackgroundColor(ContextCompat.getColor(this, android.R.color.holo_green_light));
         statusText.setText("Готов к работе");
         
         Toast.makeText(this, "Сканирование остановлено", Toast.LENGTH_SHORT).show();
@@ -253,32 +298,25 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
             double latitude = location.getLatitude();
             double longitude = location.getLongitude();
             float accuracy = location.getAccuracy();
-            
-            locationText.setText(String.format("Широта: %.6f\nДолгота: %.6f", latitude, longitude));
-            accuracyText.setText(String.format("Точность: %.1f м", accuracy));
-            
+
+            locationText.setText(String.format(Locale.getDefault(), "Широта: %.6f\nДолгота: %.6f", latitude, longitude));
+            accuracyText.setText(String.format(Locale.getDefault(), "Точность: %.1f м", accuracy));
+
             // Обновляем карту
-            currentLocation = new LatLng(latitude, longitude);
-            updateMapLocation(currentLocation);
-            
+            updateMapLocation(latitude, longitude);
+
             isLocationEnabled = true;
             Toast.makeText(this, "Местоположение обновлено", Toast.LENGTH_SHORT).show();
         }
     }
     
-    private void updateMapLocation(LatLng location) {
-        if (googleMap != null && isMapReady) {
-            // Очищаем предыдущие маркеры
-            googleMap.clear();
-            
-            // Добавляем маркер текущего местоположения
-            googleMap.addMarker(new MarkerOptions()
-                    .position(location)
-                    .title("Ваше местоположение")
-                    .snippet("BebraRadar"));
-            
-            // Перемещаем камеру к новому местоположению
-            googleMap.animateCamera(CameraUpdateFactory.newLatLngZoom(location, 15));
+    private void updateMapLocation(double latitude, double longitude) {
+        currentLatitude = latitude;
+        currentLongitude = longitude;
+
+        if (mapWebView != null && isMapLoaded) {
+            final String script = String.format(Locale.US, "window.updateMarker(%f, %f);", latitude, longitude);
+            mapWebView.post(() -> mapWebView.evaluateJavascript(script, null));
         }
     }
     
@@ -287,6 +325,9 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
         super.onDestroy();
         if (locationManager != null) {
             locationManager.removeUpdates(this);
+        }
+        if (mapWebView != null) {
+            mapWebView.destroy();
         }
     }
 }
