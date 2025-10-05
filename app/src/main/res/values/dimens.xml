@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="page_padding">24dp</dimen>
+    <dimen name="card_corner_radius_large">24dp</dimen>
+    <dimen name="card_corner_radius_medium">18dp</dimen>
+    <dimen name="chip_corner_radius">16dp</dimen>
+    <dimen name="card_elevation_small">4dp</dimen>
+    <dimen name="card_stroke_width">1dp</dimen>
+    <dimen name="map_collapsed_height">320dp</dimen>
+    <dimen name="map_collapsed_top_margin">36dp</dimen>
+    <dimen name="bottom_sheet_peek_collapsed">160dp</dimen>
+    <dimen name="bottom_sheet_peek_expanded">360dp</dimen>
+</resources>

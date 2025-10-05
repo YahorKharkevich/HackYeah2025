@@ -1,4 +1,63 @@
 <resources>
     <string name="app_name">BebraRadar</string>
-    <string name="locationiq_api_key">YOUR_LOCATIONIQ_API_KEY</string>
+
+    <string name="indicator_page_1">Search screen indicator</string>
+    <string name="indicator_page_2">Train list indicator</string>
+    <string name="indicator_page_3">Route map indicator</string>
+
+    <string name="profile_avatar">Profile avatar</string>
+    <string name="greeting_hello">Hello</string>
+    <string name="greeting_name">Mr. John Martin</string>
+    <string name="profile_action">Open profile actions</string>
+    <string name="search_title">Plan your next trip</string>
+    <string name="label_from">From Station</string>
+    <string name="from_station_hint">Select departure station</string>
+    <string name="label_to">To Station</string>
+    <string name="to_station_hint">Select arrival station</string>
+    <string name="action_swap">Swap stations</string>
+    <string name="button_find_trains">Find Trains</string>
+    <string name="recent_activity">Recent Activity</string>
+    <string name="see_all">See all</string>
+    <string name="recent_activity_hint">Train No. / Train Name</string>
+    <string name="recent_activity_placeholder">Type train number or name</string>
+    <string name="live_station">Live Station</string>
+    <string name="live_station_placeholder">Station code / name</string>
+    <string name="last_search_title">Mysore - Ajmer Express</string>
+    <string name="last_search_subtitle">Train No. — 22927</string>
+
+    <string name="action_back">Back</string>
+    <string name="train_details_title">Train Details</string>
+    <string name="train_details_subtitle">Updated just now</string>
+    <string name="action_more">Show options</string>
+    <string name="filter_all_dates">All Dates</string>
+    <string name="filter_show_fares">Show fares</string>
+    <string name="toast_feature_soon">Feature coming soon</string>
+    <string name="train_details_count">%1$d trains available</string>
+    <string name="toast_api_available">API available</string>
+    <string name="toast_api_available_with_id">API available, id %1$s</string>
+    <string name="toast_api_unavailable">API unavailable</string>
+
+    <string name="simulation_label_bus">Bus</string>
+    <string name="simulation_label_train">Train</string>
+    <string name="simulation_marker_time">Time: %1$s</string>
+    <string name="simulation_marker_trip">Trip: %1$s</string>
+    <string name="nav_search_cd">Open search</string>
+    <string name="nav_results_cd">Open results</string>
+    <string name="nav_route_cd">Open route</string>
+    <string name="route_delay_label">Delay · %1$s</string>
+
+    <string name="train_number_label">Train No. — %1$s</string>
+    <string name="label_runs_daily">Runs Daily</string>
+    <string name="label_runs_on_schedule">Runs as per schedule</string>
+    <string name="train_duration_format">Duration %1$s</string>
+    <string name="view_route">View route</string>
+
+    <string name="route_screen_title">Live Tracking</string>
+    <string name="route_screen_subtitle">Updated location</string>
+    <string name="action_share">Share route</string>
+    <string name="action_refresh">Refresh data</string>
+    <string name="route_subtitle_format">%1$s to %2$s</string>
+    <string name="route_meta_format">%1$s · %2$s</string>
+    <string name="map_expand_hint">Tap map to expand</string>
+    <string name="map_collapse_hint">Collapse full map</string>
 </resources>

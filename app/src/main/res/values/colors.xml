@@ -7,4 +7,19 @@
     <color name="teal_700">#FF018786</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+
+    <color name="primary_blue">#4BA7FF</color>
+    <color name="primary_blue_dark">#1B72F0</color>
+    <color name="accent_yellow">#FFC845</color>
+    <color name="surface_background">#F5F7FB</color>
+    <color name="surface_card">#FFFFFFFF</color>
+    <color name="surface_card_border">#E5ECF5</color>
+    <color name="text_primary">#262C3A</color>
+    <color name="text_secondary">#7B8497</color>
+    <color name="chip_background">#EEF5FF</color>
+    <color name="chip_border">#D0DEF0</color>
+    <color name="success_green">#3BC47D</color>
+    <color name="alert_red">#FF5A5A</color>
+    <color name="route_bus">#FF8F33</color>
+    <color name="route_tram">#8A6BFF</color>
 </resources>

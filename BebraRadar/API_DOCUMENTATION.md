@@ -1,174 +1,194 @@
 # BebraRadar API Documentation
 
 ## Overview
-BebraRadar exposes the PostgreSQL schema via Spring Data REST. Each table is mapped to a HAL-compliant REST resource that supports the standard CRUD operations provided by Spring Data (`GET`, `POST`, `PUT`, `PATCH`, `DELETE`). The API is designed for back-office tools and internal integrations that need direct access to GTFS-like data, realtime events, and user metrics.
+BebraRadar now exposes its GTFS-like schema through lightweight REST controllers that return plain JSON payloads. Collection endpoints yield raw arrays of table rows without HAL wrappers, pagination metadata, or `_links` sections. Every resource speaks `application/json` and can be consumed by any HTTP client without custom media types.
 
-- **Base URL:** `http://localhost:8080`
-- **Media type:** `application/hal+json` (Spring Data REST default). Plain JSON clients can ignore the `_links` section, but it is recommended to keep the `Accept: application/hal+json` header.
-- **Authentication:** not configured (all endpoints are open by default).
-- **Error payload:** Spring Data REST uses the standard Spring Boot error format (`{"timestamp": ..., "status": ..., "error": ..., "path": ...}`).
-- **Pagination:** `GET` collection resources are paginated. Use `?page=` (0-based) and `?size=` query parameters to control page navigation.
+- **Base URL:** `http://localhost:8080` (override with `server.port` if needed).
+- **Default media type:** `application/json`.
+- **Authentication:** not enabled out of the box.
+- **Error payloads:** standard Spring Boot problem responses (`{"timestamp": ..., "status": ..., "error": ..., "path": ...}`).
+- **Pagination:** disabled; `GET` collections stream the full table. Add filtering or pagination in a gateway layer if required.
 
 ## Resource Directory
-| Table | Repository Path | Identifier |
-|-------|-----------------|------------|
+| Table | Path | Identifier |
+|-------|------|------------|
 | `routes` | `/routes` | `route_id` (string)
 | `stops` | `/stops` | `stop_id` (string)
-| `trips` | `/trips` | `trip_id` (long)
+| `trips` | `/trips` | `trip_id` (long, generated)
 | `stop_times` | `/stop-times` | composite (`trip_id`, `stop_sequence`)
 | `calendar` | `/calendars` | `service_id` (string)
-| `users` | `/users` | `user_id` (long)
-| `exact_trip_event_geo_location` | `/geo-events` | `event_id` (long)
-| `exact_trip_event_timetable` | `/timetable-events` | `event_id` (long)
-| `exact_trip_anomaly` | `/anomalies` | `event_id` (long)
+| `users` | `/users` | `user_id` (long, generated)
+| `exact_trip_event_geo_location` | `/geo-events` | `event_id` (long, generated)
+| `exact_trip_event_timetable` | `/timetable-events` | `event_id` (long, generated)
+| `exact_trip_anomaly` | `/anomalies` | `event_id` (long, generated)
 | `shape_ids` | `/shape-ids` | `shape_id` (string)
 | `shapes` | `/shape-points` | composite (`shape_id`, `shape_pt_sequence`)
 
-All endpoints share the same interaction pattern:
-- `GET /{resource}` – list with pagination
-- `GET /{resource}/{id}` – fetch by identifier
-- `POST /{resource}` – create (server generates IDs when the backing table uses sequences)
-- `PUT /{resource}/{id}` – full update
-- `PATCH /{resource}/{id}` – partial update (JSON Merge Patch)
-- `DELETE /{resource}/{id}` – delete
+Unless noted otherwise, controllers support the standard CRUD surface area:
+- `GET /{resource}` – return all rows as an array
+- `GET /{resource}/{id}` – fetch a single row
+- `POST /{resource}` – create a new row (201 Created)
+- `PUT /{resource}/{id}` – replace the row (404 if missing, or create for ID-based entities)
+- `DELETE /{resource}/{id}` – delete the row (204 No Content)
 
-## Working With Relationships
-When creating or updating entities that reference other tables, send link URIs in the JSON body following the HAL format. Example for creating a trip that references an existing `route` and `shape`:
+Composite identifiers use nested paths: `/stop-times/{tripId}/{sequence}` and `/shape-points/{shapeId}/{sequence}`.
 
-```bash
-curl -X POST http://localhost:8080/trips \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "route": "http://localhost:8080/routes/{routeId}",
-    "startTime": "2024-01-15T08:00:00Z",
-    "vehicleNumber": "bus_001",
-    "shape": "http://localhost:8080/shape-ids/{shapeId}"
-  }'
-```
-
-For optional relationships you may omit the field or set it to `null`.
-
-### Composite Identifiers
-For repositories backed by composite primary keys (`stop-times` and `shape-points`), Spring Data REST concatenates key parts with a comma:
-- `GET /stop-times/{tripId},{stopSequence}`
-- `GET /shape-points/{shapeId},{sequence}`
-
-Creating such records requires supplying both the embedded ID fields and links:
-
-```bash
-curl -X POST http://localhost:8080/stop-times \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "id": {
-      "tripId": 42,
-      "stopSequence": 1
-    },
-    "trip": "http://localhost:8080/trips/42",
-    "stop": "http://localhost:8080/stops/STOP_001",
-    "arrivalTime": 0,
-    "departureTime": 30
-  }'
-```
-
-## Resource Details and Sample Payloads
-
-### Aggregated Events `/events/{type}`
-- **Description:** Convenience endpoint that returns realtime events filtered by event family. Supports optional `since` filter.
-- **Path Variables:**
-  - `type` – one of `geolocation`, `timetable`, `anomaly`.
-- **Query Params:**
-  - `since` – ISO 8601 timestamp (`2024-01-15T08:00:00Z`). When omitted, results are sorted by timestamp descending without filtering.
-- **Examples:**
-  ```bash
-  # Последние геолокации с 10 минут назад
-  curl "http://localhost:8080/events/geolocation?since=$(date -u -v-10M +%Y-%m-%dT%H:%M:%SZ)"
-
-  # Все последние аномалии
-  curl http://localhost:8080/events/anomaly
-  ```
+## JSON Schemas & Examples
 
 ### Routes `/routes`
 - **Fields:** `id`
-- **Example:**
+- **List response:**
+  ```json
+  [
+    {"id": "100A"},
+    {"id": "200B"}
+  ]
+  ```
+- **Create:**
   ```bash
   curl -X POST http://localhost:8080/routes \
     -H 'Content-Type: application/json' \
-    -d '{"id": "100A"}'
+    -d '{"id": "300C"}'
   ```
 
 ### Stops `/stops`
 - **Fields:** `id`, `name`, `latitude`, `longitude`
-- **Example response (`GET /stops/STOP_001`):**
+- **Fetch single:**
   ```json
   {
     "id": "STOP_001",
     "name": "Центральная площадь",
     "latitude": 55.7558,
-    "longitude": 37.6176,
-    "_links": {
-      "self": {"href": "http://localhost:8080/stops/STOP_001"},
-      "stop": {"href": "http://localhost:8080/stops/STOP_001"}
-    }
+    "longitude": 37.6176
   }
   ```
 
 ### Trips `/trips`
-- **Fields:** `id`, `route`, `startTime`, `vehicleNumber`, `shape`
-- **Notes:** `route` and `shape` are HAL links.
+- **Fields:** `id`, `routeId`, `startTime`, `vehicleNumber`, `shapeId`
+- **Create:**
+  ```bash
+  curl -X POST http://localhost:8080/trips \
+    -H 'Content-Type: application/json' \
+    -d '{
+          "routeId": "100A",
+          "startTime": "2024-01-15T08:00:00Z",
+          "vehicleNumber": "bus_001",
+          "shapeId": "SHAPE_1"
+        }'
+  ```
+- **Response:**
+  ```json
+  {
+    "id": 42,
+    "routeId": "100A",
+    "startTime": "2024-01-15T08:00:00Z",
+    "vehicleNumber": "bus_001",
+    "shapeId": "SHAPE_1"
+  }
+  ```
 
 ### Stop Times `/stop-times`
-- **Fields:** embedded `id (tripId, stopSequence)`, `trip`, `stop`, `arrivalTime`, `departureTime`
-- **Cascade:** deleting a `trip` removes associated stop times (database `ON DELETE CASCADE`).
+- **Fields:** `tripId`, `stopSequence`, `stopId`, `arrivalTime`, `departureTime`
+- **Identifiers:** `/stop-times/{tripId}/{stopSequence}`
+- **Create:**
+  ```bash
+  curl -X POST http://localhost:8080/stop-times \
+    -H 'Content-Type: application/json' \
+    -d '{
+          "tripId": 42,
+          "stopSequence": 1,
+          "stopId": "STOP_001",
+          "arrivalTime": 0,
+          "departureTime": 30
+        }'
+  ```
 
 ### Calendars `/calendars`
 - **Fields:** `id`, weekday booleans, `startDate`, `endDate`
+- **Example:**
+  ```json
+  {
+    "id": "WEEKDAY",
+    "monday": true,
+    "tuesday": true,
+    "wednesday": true,
+    "thursday": true,
+    "friday": true,
+    "saturday": false,
+    "sunday": false,
+    "startDate": "2024-01-01",
+    "endDate": "2024-06-30"
+  }
+  ```
 
 ### Users `/users`
 - **Fields:** `id`, `trustLevel`
+- **Create:**
+  ```bash
+  curl -X POST http://localhost:8080/users \
+    -H 'Content-Type: application/json' \
+    -d '{"trustLevel": 0.8}'
+  ```
 
 ### Geo Events `/geo-events`
-- **Fields:** `id`, `trip`, `user`, `timestamp`, `latitude`, `longitude`, `gpsAccuracyMeters`, `type`
-- **Usage:** push realtime vehicle positions.
+- **Fields:** `id`, `tripId`, `userId`, `timestamp`, `latitude`, `longitude`, `gpsAccuracyMeters`, `type`
+- **Response example:**
+  ```json
+  {
+    "id": 10,
+    "tripId": 42,
+    "userId": 5,
+    "timestamp": "2024-01-15T08:03:00Z",
+    "latitude": 55.751,
+    "longitude": 37.618,
+    "gpsAccuracyMeters": 5.0,
+    "type": "GPS"
+  }
+  ```
 
 ### Timetable Events `/timetable-events`
-- **Fields:** `id`, `trip`, `user`, `timestamp`, `latitude`, `longitude`, `gpsAccuracyMeters`, `type`, `reportedTime`
+- **Fields:** `id`, `tripId`, `userId`, `timestamp`, `latitude`, `longitude`, `gpsAccuracyMeters`, `type`, `reportedTime`
 
 ### Anomalies `/anomalies`
-- **Fields:** `id`, `trip`, `user`, `timestamp`, `latitude`, `longitude`, `gpsAccuracyMeters`, `type`, `estimatedDelay`
+- **Fields:** `id`, `tripId`, `userId`, `timestamp`, `latitude`, `longitude`, `gpsAccuracyMeters`, `type`, `estimatedDelay`
 
 ### Shape IDs `/shape-ids`
 - **Fields:** `id`
-- **Usage:** acts as parent for shape points; create before sending `/shape-points`.
 
 ### Shape Points `/shape-points`
-- **Fields:** embedded `id (shapeId, sequence)`, `shape`, `latitude`, `longitude`, `distanceTraveled`
-- **Example creation:**
+- **Fields:** `shapeId`, `sequence`, `latitude`, `longitude`, `distanceTraveled`
+- **Identifiers:** `/shape-points/{shapeId}/{sequence}`
+- **Create:**
   ```bash
   curl -X POST http://localhost:8080/shape-points \
     -H 'Content-Type: application/json' \
     -d '{
-      "id": {"shapeId": "SHAPE_1", "sequence": 1},
-      "shape": "http://localhost:8080/shape-ids/SHAPE_1",
-      "latitude": 55.751,
-      "longitude": 37.618,
-      "distanceTraveled": 0.0
-    }'
+          "shapeId": "SHAPE_1",
+          "sequence": 1,
+          "latitude": 55.751,
+          "longitude": 37.618,
+          "distanceTraveled": 0.0
+        }'
   ```
 
-## Discoverability
-Spring Data REST publishes a root catalog at `/`. Issue `GET /` to fetch a list of all exported resources with hyperlinks; clients can traverse those links without hardcoding paths.
+## Aggregated Feed `/events/{type}`
+Use this helper endpoint to pull the latest realtime events without juggling individual tables.
 
-```bash
-curl http://localhost:8080/
-```
+- **Path variable:** `type` ∈ `{geolocation, timetable, anomaly}`
+- **Query:** `since` (ISO 8601). When omitted, results are sorted by `timestamp` descending.
+- **Example:**
+  ```bash
+  curl "http://localhost:8080/events/geolocation?since=2024-01-15T08:00:00Z"
+  ```
+- **Response:** array of the same DTOs returned by `/geo-events`, `/timetable-events`, or `/anomalies` (only data columns, no wrappers).
 
 ## Testing Checklist
-1. Start PostgreSQL with the GTFS-like schema applied.
-2. Run the application: `./mvnw spring-boot:run`.
-3. Verify the root catalog: `curl http://localhost:8080/`.
-4. Exercise CRUD flows for key resources (e.g., create a route → trip → stop times → realtime events).
+1. Start PostgreSQL with the expected schema/data.
+2. Launch the application: `./mvnw spring-boot:run`.
+3. Verify a collection endpoint, e.g. `curl http://localhost:8080/routes` – expect a raw JSON array.
+4. Exercise CRUD flows (create/update/delete) for the entities you rely on.
 
 ## Notes & Limitations
-- The application currently runs without authentication or authorization. Configure Spring Security before exposing the API publicly.
-- `spring.jpa.hibernate.ddl-auto=update` will adjust your schema to match entity definitions (including widening text columns to 255). Disable or change this behavior if schema drift is undesirable.
-- Spring Data REST payloads are generic; introduce DTOs/controllers if a tailored contract is required.
+- Relationships now accept foreign keys directly (e.g., `routeId`, `tripId`). Missing references yield `404` responses.
+- Because collections are unpaged, large tables may require client-side filtering or a custom gateway.
+- No authentication is baked in; secure the application before exposing it publicly.

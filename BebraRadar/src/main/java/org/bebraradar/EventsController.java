@@ -1,8 +1,8 @@
 package org.bebraradar;
 
-import org.bebraradar.entity.ExactTripAnomaly;
-import org.bebraradar.entity.ExactTripEventGeoLocation;
-import org.bebraradar.entity.ExactTripEventTimetable;
+import org.bebraradar.dto.AnomalyResponse;
+import org.bebraradar.dto.GeoEventResponse;
+import org.bebraradar.dto.TimetableEventResponse;
 import org.bebraradar.repository.ExactTripAnomalyRepository;
 import org.bebraradar.repository.ExactTripEventGeoLocationRepository;
 import org.bebraradar.repository.ExactTripEventTimetableRepository;
@@ -37,10 +37,10 @@ public class EventsController {
     }
 
     @GetMapping("/{type}")
-    public ResponseEntity<List<?>> getEvents(@PathVariable String type,
-                                             @RequestParam(required = false)
-                                             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
-                                             OffsetDateTime since) {
+    public ResponseEntity<?> getEvents(@PathVariable String type,
+                                       @RequestParam(required = false)
+                                       @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+                                       OffsetDateTime since) {
         return switch (type.toLowerCase()) {
             case "geolocation" -> ResponseEntity.ok(fetchGeoEvents(since));
             case "timetable" -> ResponseEntity.ok(fetchTimetableEvents(since));
@@ -49,21 +49,56 @@ public class EventsController {
         };
     }
 
-    private List<ExactTripEventGeoLocation> fetchGeoEvents(OffsetDateTime since) {
-        return since == null
+    private List<GeoEventResponse> fetchGeoEvents(OffsetDateTime since) {
+        return (since == null
             ? geoLocationRepository.findAll(TIMESTAMP_DESC)
-            : geoLocationRepository.findByTimestampGreaterThanEqualOrderByTimestampDesc(since);
+            : geoLocationRepository.findByTimestampGreaterThanEqualOrderByTimestampDesc(since))
+            .stream()
+            .map(event -> new GeoEventResponse(
+                event.getId(),
+                event.getTrip().getId(),
+                event.getUser() == null ? null : event.getUser().getId(),
+                event.getTimestamp(),
+                event.getLatitude(),
+                event.getLongitude(),
+                event.getGpsAccuracyMeters(),
+                event.getType()))
+            .toList();
     }
 
-    private List<ExactTripEventTimetable> fetchTimetableEvents(OffsetDateTime since) {
-        return since == null
+    private List<TimetableEventResponse> fetchTimetableEvents(OffsetDateTime since) {
+        return (since == null
             ? timetableRepository.findAll(TIMESTAMP_DESC)
-            : timetableRepository.findByTimestampGreaterThanEqualOrderByTimestampDesc(since);
+            : timetableRepository.findByTimestampGreaterThanEqualOrderByTimestampDesc(since))
+            .stream()
+            .map(event -> new TimetableEventResponse(
+                event.getId(),
+                event.getTrip().getId(),
+                event.getUser() == null ? null : event.getUser().getId(),
+                event.getTimestamp(),
+                event.getLatitude(),
+                event.getLongitude(),
+                event.getGpsAccuracyMeters(),
+                event.getType(),
+                event.getReportedTime()))
+            .toList();
     }
 
-    private List<ExactTripAnomaly> fetchAnomalies(OffsetDateTime since) {
-        return since == null
+    private List<AnomalyResponse> fetchAnomalies(OffsetDateTime since) {
+        return (since == null
             ? anomalyRepository.findAll(TIMESTAMP_DESC)
-            : anomalyRepository.findByTimestampGreaterThanEqualOrderByTimestampDesc(since);
+            : anomalyRepository.findByTimestampGreaterThanEqualOrderByTimestampDesc(since))
+            .stream()
+            .map(event -> new AnomalyResponse(
+                event.getId(),
+                event.getTrip().getId(),
+                event.getUser() == null ? null : event.getUser().getId(),
+                event.getTimestamp(),
+                event.getLatitude(),
+                event.getLongitude(),
+                event.getGpsAccuracyMeters(),
+                event.getType(),
+                event.getEstimatedDelay()))
+            .toList();
     }
 }

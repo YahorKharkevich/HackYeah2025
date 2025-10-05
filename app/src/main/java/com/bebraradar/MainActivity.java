@@ -1,333 +1,334 @@
 package com.bebraradar;
 
-import android.Manifest;
-import android.content.pm.PackageManager;
-import android.location.Location;
-import android.location.LocationListener;
-import android.location.LocationManager;
 import android.os.Bundle;
-import android.view.View;
-import android.webkit.WebSettings;
-import android.webkit.WebView;
-import android.webkit.WebViewClient;
-import android.widget.Button;
-import android.widget.TextView;
 import android.widget.Toast;
+
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
+import androidx.fragment.app.Fragment;
+import androidx.viewpager2.adapter.FragmentStateAdapter;
+import androidx.viewpager2.widget.ViewPager2;
 
-import java.io.BufferedReader;
+import com.bebraradar.BuildConfig;
+import com.bebraradar.model.RouteStop;
+import com.bebraradar.model.Train;
+import com.bebraradar.ui.screens.SearchFragment;
+import com.bebraradar.ui.screens.TrainResultsFragment;
+import com.bebraradar.ui.screens.TrainRouteFragment;
+import com.google.android.material.button.MaterialButtonToggleGroup;
+
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
-import java.util.Locale;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
-public class MainActivity extends AppCompatActivity implements LocationListener {
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
 
-    private Button scanButton;
-    private Button settingsButton;
-    private Button getLocationButton;
-    private TextView statusText;
-    private TextView locationText;
-    private TextView accuracyText;
-    private boolean isScanning = false;
-    
-    // Геолокация
-    private LocationManager locationManager;
-    private static final int LOCATION_PERMISSION_REQUEST_CODE = 1001;
-    private boolean isLocationEnabled = false;
-    
-    // Карта LocationIQ
-    private WebView mapWebView;
-    private boolean isMapLoaded = false;
-    private double currentLatitude;
-    private double currentLongitude;
-    private static final String LOCATIONIQ_PLACEHOLDER = "YOUR_LOCATIONIQ_API_KEY";
+public class MainActivity extends AppCompatActivity
+        implements SearchFragment.Listener,
+        TrainResultsFragment.Listener,
+        TrainRouteFragment.Listener {
+    private final OkHttpClient httpClient = new OkHttpClient();
+    private String[] apiBaseEndpoints;
+
+    private ViewPager2 viewPager;
+    private ScreensPagerAdapter pagerAdapter;
+    private ExecutorService networkExecutor;
+    private MaterialButtonToggleGroup bottomNavGroup;
+    private boolean updatingNavigation;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        
-        // Инициализация компонентов
-        initViews();
-        
-        // Настройка обработчиков событий
-        setupClickListeners();
-        
-        // Инициализация карты
-        initMap();
-    }
-    
-    private void initViews() {
-        scanButton = findViewById(R.id.scanButton);
-        settingsButton = findViewById(R.id.settingsButton);
-        getLocationButton = findViewById(R.id.getLocationButton);
-        statusText = findViewById(R.id.statusText);
-        locationText = findViewById(R.id.locationText);
-        accuracyText = findViewById(R.id.accuracyText);
-        mapWebView = findViewById(R.id.mapWebView);
-        
-        // Инициализация LocationManager
-        locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
-    }
-    
-    private void setupClickListeners() {
-        scanButton.setOnClickListener(new View.OnClickListener() {
+
+        viewPager = findViewById(R.id.mainViewPager);
+        pagerAdapter = new ScreensPagerAdapter(this);
+        viewPager.setAdapter(pagerAdapter);
+        viewPager.setUserInputEnabled(false);
+        viewPager.setOffscreenPageLimit(pagerAdapter.getItemCount());
+        viewPager.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
             @Override
-            public void onClick(View v) {
-                toggleScanning();
+            public void onPageSelected(int position) {
+                super.onPageSelected(position);
+                updateNavigation(position);
             }
         });
-        
-        settingsButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                showSettings();
-            }
-        });
-        
-        getLocationButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                getCurrentLocation();
-            }
-        });
-    }
-    
-    private void initMap() {
-        if (mapWebView == null) {
-            return;
+
+        bottomNavGroup = findViewById(R.id.bottomNavGroup);
+        if (bottomNavGroup != null) {
+            bottomNavGroup.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
+                if (!isChecked || updatingNavigation) {
+                    return;
+                }
+                Integer targetIndex = getIndexForButton(checkedId);
+                if (targetIndex != null && targetIndex != viewPager.getCurrentItem()) {
+                    navigateToPage(targetIndex);
+                }
+            });
+            updateNavigation(0);
         }
 
-        WebSettings webSettings = mapWebView.getSettings();
-        webSettings.setJavaScriptEnabled(true);
-        webSettings.setDomStorageEnabled(true);
+        apiBaseEndpoints = buildApiEndpointCandidates();
+        networkExecutor = Executors.newSingleThreadExecutor();
+        checkApiAvailability();
+    }
 
-        mapWebView.setWebViewClient(new WebViewClient() {
-            @Override
-            public void onPageFinished(WebView view, String url) {
-                super.onPageFinished(view, url);
-                isMapLoaded = true;
-                Toast.makeText(MainActivity.this, "Карта готова", Toast.LENGTH_SHORT).show();
+    private void navigateToPage(int index) {
+        viewPager.setCurrentItem(index, true);
+    }
 
-                if (isLocationEnabled) {
-                    updateMapLocation(currentLatitude, currentLongitude);
-                } else {
-                    // Установка начального местоположения (Москва)
-                    updateMapLocation(55.7558, 37.6176);
+    private void updateNavigation(int selectedIndex) {
+        if (bottomNavGroup == null) {
+            return;
+        }
+        Integer buttonId = getButtonIdForIndex(selectedIndex);
+        if (buttonId == null) {
+            return;
+        }
+        updatingNavigation = true;
+        bottomNavGroup.check(buttonId);
+        updatingNavigation = false;
+    }
+
+    @Nullable
+    private Integer getButtonIdForIndex(int index) {
+        if (index == 0) {
+            return R.id.navSearchButton;
+        } else if (index == 1) {
+            return R.id.navResultsButton;
+        } else if (index == 2) {
+            return R.id.navRouteButton;
+        }
+        return null;
+    }
+
+    @Nullable
+    private Integer getIndexForButton(int buttonId) {
+        if (buttonId == R.id.navSearchButton) {
+            return 0;
+        } else if (buttonId == R.id.navResultsButton) {
+            return 1;
+        } else if (buttonId == R.id.navRouteButton) {
+            return 2;
+        }
+        return null;
+    }
+
+    @Override
+    public void onFindTrainsRequested(@NonNull String fromStation, @NonNull String toStation) {
+        navigateToPage(1);
+    }
+
+    @Override
+    public void onCloseResults() {
+        navigateToPage(0);
+    }
+
+    @Override
+    public void onTrainSelected(@NonNull Train train) {
+        TrainRouteFragment routeFragment = pagerAdapter.getRouteFragment();
+        routeFragment.updateTrainData(train, createRouteStops(train));
+        navigateToPage(2);
+    }
+
+    @Override
+    public void onCloseRoute() {
+        navigateToPage(1);
+    }
+
+    private List<RouteStop> createRouteStops(@NonNull Train train) {
+        List<RouteStop> stops = new ArrayList<>();
+        if (train.getName().contains("Mysore")) {
+            stops.add(new RouteStop("10:15", "Mysore Junction", "Platform 1", "On time", true, true, 12.3122, 76.6497));
+            stops.add(new RouteStop("14:45", "Bangalore City", "Platform 3", "+5 min", true, false, 12.9789, 77.5713));
+            stops.add(new RouteStop("22:10", "Ajmer Junction", "Platform 2", "Arrives", false, false, 26.4499, 74.6399));
+        } else if (train.getName().contains("Rajdhani")) {
+            stops.add(new RouteStop("10:15", "Mumbai Central", "Platform 5", "On time", true, true, 18.9690, 72.8194));
+            stops.add(new RouteStop("18:45", "Vadodara", "Platform 2", "+3 min", true, false, 22.3107, 73.1926));
+            stops.add(new RouteStop("04:20", "New Delhi", "Platform 1", "Expected", false, false, 28.6139, 77.2090));
+        } else {
+            stops.add(new RouteStop("2:21 am", "Bandra Terminus", "0 km Platform", "2:30 am", true, false, 19.0546, 72.8406));
+            stops.add(new RouteStop("3:12 am", "Andheri", "0 km Platform", "3:22 am", true, true, 19.1188, 72.8467));
+            stops.add(new RouteStop("3:12 am", "Borivali", "0 km Platform", "4:22 am", false, false, 19.2295, 72.8570));
+        }
+        return stops;
+    }
+
+    private void checkApiAvailability() {
+        if (networkExecutor == null) {
+            return;
+        }
+        networkExecutor.execute(() -> {
+            boolean available = false;
+            String reachableEndpoint = null;
+            String routesId = null;
+            for (String endpoint : apiBaseEndpoints) {
+                Request request = new Request.Builder().url(endpoint).build();
+                try (Response response = httpClient.newCall(request).execute()) {
+                    if (response.isSuccessful()) {
+                        available = true;
+                        reachableEndpoint = endpoint;
+
+                        routesId = fetchRoutesId(endpoint);
+                        break;
+                    }
+                } catch (IOException ignored) {
                 }
             }
+            boolean finalAvailable = available;
+            final String finalEndpoint = reachableEndpoint;
+            final String finalRoutesId = routesId;
+            showToastOnUiThread(finalAvailable
+                    ? formatApiAvailableMessage(finalRoutesId)
+                    : getString(R.string.toast_api_unavailable));
+            if (!finalAvailable) {
+                System.out.println("[API] Failed to reach any endpoint: " + String.join(", ", apiBaseEndpoints));
+            } else {
+                System.out.println("[API] Using endpoint: " + finalEndpoint);
+            }
         });
-
-        loadLocationIqMap();
     }
 
-    private void loadLocationIqMap() {
-        String apiKey = getString(R.string.locationiq_api_key);
-        if (apiKey == null) {
-            apiKey = "";
+    private String formatApiAvailableMessage(String routesId) {
+        if (routesId == null || routesId.isEmpty()) {
+            return getString(R.string.toast_api_available);
         }
+        return getString(R.string.toast_api_available_with_id, routesId);
+    }
 
-        if (LOCATIONIQ_PLACEHOLDER.equals(apiKey)) {
-            Toast.makeText(this, "Укажите ключ LocationIQ в strings.xml", Toast.LENGTH_LONG).show();
-        }
-
-        try (InputStream inputStream = getAssets().open("locationiq_map.html");
-             InputStreamReader inputStreamReader = new InputStreamReader(inputStream, StandardCharsets.UTF_8);
-             BufferedReader reader = new BufferedReader(inputStreamReader)) {
-
-            StringBuilder builder = new StringBuilder();
-            String line;
-            while ((line = reader.readLine()) != null) {
-                builder.append(line).append('\n');
+    private String fetchRoutesId(@NonNull String baseUrl) {
+        String routesUrl = baseUrl + "routes";
+        Request request = new Request.Builder()
+                .url(routesUrl)
+                .build();
+        try (Response response = httpClient.newCall(request).execute()) {
+            if (!response.isSuccessful()) {
+                return null;
             }
-
-            final String html = builder.toString()
-                    .replace("LOCATIONIQ_API_KEY_PLACEHOLDER", apiKey != null ? apiKey : "");
-
-            mapWebView.loadDataWithBaseURL(
-                    "https://maps.locationiq.com",
-                    html,
-                    "text/html",
-                    "UTF-8",
-                    null
-            );
+            String body = response.body() != null ? response.body().string() : null;
+            if (body == null || body.isEmpty()) {
+                return null;
+            }
+            return parseFirstId(body);
         } catch (IOException e) {
-            Toast.makeText(this, "Не удалось загрузить карту LocationIQ", Toast.LENGTH_SHORT).show();
+            return null;
         }
     }
-    
-    private void toggleScanning() {
-        if (isScanning) {
-            stopScanning();
-        } else {
-            startScanning();
-        }
-    }
-    
-    private void startScanning() {
-        isScanning = true;
-        scanButton.setText("Остановить сканирование");
-        scanButton.setBackgroundColor(ContextCompat.getColor(this, android.R.color.holo_red_light));
-        statusText.setText("Сканирование активно...");
-        
-        Toast.makeText(this, "Сканирование запущено", Toast.LENGTH_SHORT).show();
-    }
-    
-    private void stopScanning() {
-        isScanning = false;
-        scanButton.setText("Начать сканирование");
-        scanButton.setBackgroundColor(ContextCompat.getColor(this, android.R.color.holo_green_light));
-        statusText.setText("Готов к работе");
-        
-        Toast.makeText(this, "Сканирование остановлено", Toast.LENGTH_SHORT).show();
-    }
-    
-    private void showSettings() {
-        Toast.makeText(this, "Открываем настройки...", Toast.LENGTH_SHORT).show();
-        // Здесь можно добавить переход к экрану настроек
-    }
-    
-    // ========== МЕТОДЫ ГЕОЛОКАЦИИ ==========
-    
-    private void getCurrentLocation() {
-        // Проверяем разрешения
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) 
-                != PackageManager.PERMISSION_GRANTED) {
-            requestLocationPermission();
-            return;
-        }
-        
-        // Проверяем, включена ли геолокация
-        if (!locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER) && 
-            !locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
-            Toast.makeText(this, "Геолокация отключена. Включите GPS или сетевую геолокацию.", 
-                    Toast.LENGTH_LONG).show();
-            return;
-        }
-        
-        try {
-            // Запрашиваем последнее известное местоположение
-            Location lastKnownLocation = null;
-            
-            if (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
-                lastKnownLocation = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
-            }
-            
-            if (lastKnownLocation == null && locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
-                lastKnownLocation = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
-            }
-            
-            if (lastKnownLocation != null) {
-                updateLocationUI(lastKnownLocation);
-            } else {
-                // Если нет последнего известного местоположения, запрашиваем обновления
-                requestLocationUpdates();
-            }
-            
-        } catch (SecurityException e) {
-            Toast.makeText(this, "Ошибка доступа к геолокации", Toast.LENGTH_SHORT).show();
-        }
-    }
-    
-    private void requestLocationUpdates() {
-        try {
-            if (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
-                locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000, 1, this);
-            } else if (locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
-                locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 1000, 1, this);
-            }
-            
-            locationText.setText("Поиск местоположения...");
-            accuracyText.setText("Обновление...");
-            
-        } catch (SecurityException e) {
-            Toast.makeText(this, "Ошибка доступа к геолокации", Toast.LENGTH_SHORT).show();
-        }
-    }
-    
-    private void requestLocationPermission() {
-        ActivityCompat.requestPermissions(this, 
-                new String[]{Manifest.permission.ACCESS_FINE_LOCATION, 
-                           Manifest.permission.ACCESS_COARSE_LOCATION}, 
-                LOCATION_PERMISSION_REQUEST_CODE);
-    }
-    
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, 
-                                         @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        
-        if (requestCode == LOCATION_PERMISSION_REQUEST_CODE) {
-            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                Toast.makeText(this, "Разрешение на геолокацию предоставлено", Toast.LENGTH_SHORT).show();
-                getCurrentLocation();
-            } else {
-                Toast.makeText(this, "Разрешение на геолокацию отклонено", Toast.LENGTH_SHORT).show();
-                locationText.setText("Геолокация недоступна");
-                accuracyText.setText("Нет разрешения");
-            }
-        }
-    }
-    
-    @Override
-    public void onLocationChanged(@NonNull Location location) {
-        updateLocationUI(location);
-        // Останавливаем обновления после получения первого местоположения
-        locationManager.removeUpdates(this);
-    }
-    
-    @Override
-    public void onProviderEnabled(@NonNull String provider) {
-        // Провайдер геолокации включен
-    }
-    
-    @Override
-    public void onProviderDisabled(@NonNull String provider) {
-        // Провайдер геолокации отключен
-        locationText.setText("Геолокация отключена");
-        accuracyText.setText("Провайдер недоступен");
-    }
-    
-    private void updateLocationUI(Location location) {
-        if (location != null) {
-            double latitude = location.getLatitude();
-            double longitude = location.getLongitude();
-            float accuracy = location.getAccuracy();
 
-            locationText.setText(String.format(Locale.getDefault(), "Широта: %.6f\nДолгота: %.6f", latitude, longitude));
-            accuracyText.setText(String.format(Locale.getDefault(), "Точность: %.1f м", accuracy));
-
-            // Обновляем карту
-            updateMapLocation(latitude, longitude);
-
-            isLocationEnabled = true;
-            Toast.makeText(this, "Местоположение обновлено", Toast.LENGTH_SHORT).show();
+    private String parseFirstId(@NonNull String body) {
+        int idIndex = body.indexOf("\"id\"");
+        if (idIndex == -1) {
+            return null;
         }
-    }
-    
-    private void updateMapLocation(double latitude, double longitude) {
-        currentLatitude = latitude;
-        currentLongitude = longitude;
-
-        if (mapWebView != null && isMapLoaded) {
-            final String script = String.format(Locale.US, "window.updateMarker(%f, %f);", latitude, longitude);
-            mapWebView.post(() -> mapWebView.evaluateJavascript(script, null));
+        int colonIndex = body.indexOf(':', idIndex);
+        if (colonIndex == -1) {
+            return null;
         }
+        int startQuote = body.indexOf('"', colonIndex);
+        int endQuote = -1;
+        String parsedId = null;
+        if (startQuote != -1) {
+            endQuote = body.indexOf('"', startQuote + 1);
+            if (endQuote > startQuote) {
+                parsedId = body.substring(startQuote + 1, endQuote);
+            }
+        }
+        if (parsedId == null) {
+            // fallback for numeric id without quotes
+            int start = colonIndex + 1;
+            while (start < body.length() && Character.isWhitespace(body.charAt(start))) {
+                start++;
+            }
+            int end = start;
+            while (end < body.length() && Character.isDigit(body.charAt(end))) {
+                end++;
+            }
+            if (end > start) {
+                parsedId = body.substring(start, end);
+            }
+        }
+        if (parsedId != null && !parsedId.isEmpty()) {
+            return parsedId;
+        }
+        return null;
     }
-    
+
+    private String[] buildApiEndpointCandidates() {
+        Set<String> candidates = new LinkedHashSet<>();
+        String configured = sanitizeBaseUrl(BuildConfig.DEFAULT_API_BASE_URL);
+        if (configured != null) {
+            candidates.add(configured);
+        }
+        candidates.add(sanitizeBaseUrl("http://10.0.2.2:8081/"));
+        candidates.add(sanitizeBaseUrl("http://127.0.0.1:8081/"));
+        candidates.add(sanitizeBaseUrl("http://localhost:8081/"));
+        candidates.remove(null);
+        return candidates.toArray(new String[0]);
+    }
+
+    private String sanitizeBaseUrl(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        if (trimmed.isEmpty()) {
+            return null;
+        }
+        if (!trimmed.startsWith("http://") && !trimmed.startsWith("https://")) {
+            trimmed = "http://" + trimmed;
+        }
+        if (!trimmed.endsWith("/")) {
+            trimmed = trimmed + "/";
+        }
+        return trimmed;
+    }
+
+    private void showToastOnUiThread(@NonNull String message) {
+        runOnUiThread(() -> Toast.makeText(MainActivity.this, message, Toast.LENGTH_SHORT).show());
+    }
+
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        if (locationManager != null) {
-            locationManager.removeUpdates(this);
+        if (networkExecutor != null) {
+            networkExecutor.shutdownNow();
+            networkExecutor = null;
         }
-        if (mapWebView != null) {
-            mapWebView.destroy();
+    }
+
+    private static class ScreensPagerAdapter extends FragmentStateAdapter {
+
+        private final Fragment[] fragments;
+
+        ScreensPagerAdapter(@NonNull AppCompatActivity activity) {
+            super(activity);
+            fragments = new Fragment[]{
+                    new SearchFragment(),
+                    new TrainResultsFragment(),
+                    new TrainRouteFragment()
+            };
+        }
+
+        @NonNull
+        @Override
+        public Fragment createFragment(int position) {
+            return fragments[position];
+        }
+
+        @Override
+        public int getItemCount() {
+            return fragments.length;
+        }
+
+        TrainRouteFragment getRouteFragment() {
+            return (TrainRouteFragment) fragments[2];
         }
     }
 }
