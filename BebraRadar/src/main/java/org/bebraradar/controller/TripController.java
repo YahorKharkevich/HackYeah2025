@@ -55,7 +55,7 @@ public class TripController {
         Trip trip = new Trip(
             referenceResolver.requireRoute(request.routeId()),
             request.startTime(),
-            request.vehicleNumber(),
+            referenceResolver.requireCalendar(request.serviceId()),
             referenceResolver.resolveShapeNullable(request.shapeId())
         );
         return toDto(tripRepository.save(trip));
@@ -85,7 +85,7 @@ public class TripController {
         validate(request);
         trip.setRoute(referenceResolver.requireRoute(request.routeId()));
         trip.setStartTime(request.startTime());
-        trip.setVehicleNumber(request.vehicleNumber());
+        trip.setService(referenceResolver.requireCalendar(request.serviceId()));
         ShapeIdEntity shape = referenceResolver.resolveShapeNullable(request.shapeId());
         trip.setShape(shape);
     }
@@ -97,6 +97,9 @@ public class TripController {
         if (request.startTime() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Start time is required");
         }
+        if (request.serviceId() == null || request.serviceId().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Service id is required");
+        }
     }
 
     private static TripResponse toDto(Trip trip) {
@@ -105,7 +108,7 @@ public class TripController {
             trip.getId(),
             trip.getRoute().getId(),
             trip.getStartTime(),
-            trip.getVehicleNumber(),
+            trip.getService().getId(),
             shapeId
         );
     }

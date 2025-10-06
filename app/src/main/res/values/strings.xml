@@ -44,6 +44,18 @@
     <string name="nav_search_cd">Open search</string>
     <string name="nav_results_cd">Open results</string>
     <string name="nav_route_cd">Open route</string>
+    <string name="nav_schedule_cd">Open schedule</string>
+    <string name="schedule_tab_title">Schedule</string>
+    <string name="schedule_pick_date">Pick date</string>
+    <string name="schedule_routes_header">Routes for %1$s</string>
+    <string name="schedule_trips_header">Trips on %1$s for %2$s</string>
+    <string name="schedule_back_to_routes">Back to routes</string>
+    <string name="schedule_no_routes">No routes for selected date</string>
+    <string name="schedule_no_trips">No trips for this route</string>
+    <string name="schedule_trip_title">Trip %1$s</string>
+    <string name="schedule_stop_line">%1$s. %2$s (%3$s)
+Arr: %4$s  Dep: %5$s</string>
+    <string name="schedule_dialog_close">Close</string>
     <string name="route_delay_label">Delay · %1$s</string>
 
     <string name="train_number_label">Train No. — %1$s</string>

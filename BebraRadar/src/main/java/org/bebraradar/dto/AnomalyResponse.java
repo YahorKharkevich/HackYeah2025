@@ -4,6 +4,7 @@ import java.time.OffsetDateTime;
 
 public record AnomalyResponse(Long id,
                               Long tripId,
+                              String vehicleNo,
                               Long userId,
                               OffsetDateTime timestamp,
                               Double latitude,

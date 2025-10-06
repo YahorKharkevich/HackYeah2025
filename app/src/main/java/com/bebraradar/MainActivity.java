@@ -16,6 +16,7 @@ import com.bebraradar.model.Train;
 import com.bebraradar.ui.screens.SearchFragment;
 import com.bebraradar.ui.screens.TrainResultsFragment;
 import com.bebraradar.ui.screens.TrainRouteFragment;
+import com.bebraradar.ui.screens.ScheduleFragment;
 import com.google.android.material.button.MaterialButtonToggleGroup;
 
 import java.io.IOException;
@@ -105,6 +106,8 @@ public class MainActivity extends AppCompatActivity
             return R.id.navResultsButton;
         } else if (index == 2) {
             return R.id.navRouteButton;
+        } else if (index == 3) {
+            return R.id.navScheduleButton;
         }
         return null;
     }
@@ -117,6 +120,8 @@ public class MainActivity extends AppCompatActivity
             return 1;
         } else if (buttonId == R.id.navRouteButton) {
             return 2;
+        } else if (buttonId == R.id.navScheduleButton) {
+            return 3;
         }
         return null;
     }
@@ -266,8 +271,11 @@ public class MainActivity extends AppCompatActivity
         if (configured != null) {
             candidates.add(configured);
         }
+        candidates.add(sanitizeBaseUrl("http://10.0.2.2:8080/"));
         candidates.add(sanitizeBaseUrl("http://10.0.2.2:8081/"));
+        candidates.add(sanitizeBaseUrl("http://127.0.0.1:8080/"));
         candidates.add(sanitizeBaseUrl("http://127.0.0.1:8081/"));
+        candidates.add(sanitizeBaseUrl("http://localhost:8080/"));
         candidates.add(sanitizeBaseUrl("http://localhost:8081/"));
         candidates.remove(null);
         return candidates.toArray(new String[0]);
@@ -286,6 +294,9 @@ public class MainActivity extends AppCompatActivity
         }
         if (!trimmed.endsWith("/")) {
             trimmed = trimmed + "/";
+        }
+        if (trimmed.contains("$")) {
+            return null;
         }
         return trimmed;
     }
@@ -312,7 +323,8 @@ public class MainActivity extends AppCompatActivity
             fragments = new Fragment[]{
                     new SearchFragment(),
                     new TrainResultsFragment(),
-                    new TrainRouteFragment()
+                    new TrainRouteFragment(),
+                    new ScheduleFragment()
             };
         }
 

@@ -26,6 +26,10 @@ public class ExactTripAnomaly {
     private Trip trip;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "vehicle_no")
+    private VehiclePositionCurrent vehicle;
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
     private UserAccount user;
 
@@ -68,6 +72,14 @@ public class ExactTripAnomaly {
 
     public Trip getTrip() {
         return trip;
+    }
+
+    public VehiclePositionCurrent getVehicle() {
+        return vehicle;
+    }
+
+    public void setVehicle(VehiclePositionCurrent vehicle) {
+        this.vehicle = vehicle;
     }
 
     public void setTrip(Trip trip) {

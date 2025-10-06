@@ -28,8 +28,9 @@ public class Trip {
     @Column(name = "start_time", nullable = false)
     private OffsetDateTime startTime;
 
-    @Column(name = "vehicle_no")
-    private String vehicleNumber;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "service_id", nullable = false)
+    private ServiceCalendar service;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "shape_id")
@@ -38,10 +39,10 @@ public class Trip {
     protected Trip() {
     }
 
-    public Trip(Route route, OffsetDateTime startTime, String vehicleNumber, ShapeIdEntity shape) {
+    public Trip(Route route, OffsetDateTime startTime, ServiceCalendar service, ShapeIdEntity shape) {
         this.route = route;
         this.startTime = startTime;
-        this.vehicleNumber = vehicleNumber;
+        this.service = service;
         this.shape = shape;
     }
 
@@ -65,12 +66,12 @@ public class Trip {
         this.startTime = startTime;
     }
 
-    public String getVehicleNumber() {
-        return vehicleNumber;
+    public ServiceCalendar getService() {
+        return service;
     }
 
-    public void setVehicleNumber(String vehicleNumber) {
-        this.vehicleNumber = vehicleNumber;
+    public void setService(ServiceCalendar service) {
+        this.service = service;
     }
 
     public ShapeIdEntity getShape() {

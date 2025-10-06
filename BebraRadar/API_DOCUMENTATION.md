@@ -18,6 +18,7 @@ BebraRadar now exposes its GTFS-like schema through lightweight REST controllers
 | `stop_times` | `/stop-times` | composite (`trip_id`, `stop_sequence`)
 | `calendar` | `/calendars` | `service_id` (string)
 | `users` | `/users` | `user_id` (long, generated)
+| `vehicle_positions_current` | `/vehicle-positions` | `vehicle_no` (string)
 | `exact_trip_event_geo_location` | `/geo-events` | `event_id` (long, generated)
 | `exact_trip_event_timetable` | `/timetable-events` | `event_id` (long, generated)
 | `exact_trip_anomaly` | `/anomalies` | `event_id` (long, generated)
@@ -64,7 +65,7 @@ Composite identifiers use nested paths: `/stop-times/{tripId}/{sequence}` and `/
   ```
 
 ### Trips `/trips`
-- **Fields:** `id`, `routeId`, `startTime`, `vehicleNumber`, `shapeId`
+- **Fields:** `id`, `routeId`, `startTime`, `serviceId`, `shapeId`
 - **Create:**
   ```bash
   curl -X POST http://localhost:8080/trips \
@@ -72,7 +73,7 @@ Composite identifiers use nested paths: `/stop-times/{tripId}/{sequence}` and `/
     -d '{
           "routeId": "100A",
           "startTime": "2024-01-15T08:00:00Z",
-          "vehicleNumber": "bus_001",
+          "serviceId": "WEEKDAY",
           "shapeId": "SHAPE_1"
         }'
   ```
@@ -82,9 +83,28 @@ Composite identifiers use nested paths: `/stop-times/{tripId}/{sequence}` and `/
     "id": 42,
     "routeId": "100A",
     "startTime": "2024-01-15T08:00:00Z",
-    "vehicleNumber": "bus_001",
+    "serviceId": "WEEKDAY",
     "shapeId": "SHAPE_1"
   }
+  ```
+
+### Vehicle Positions `/vehicle-positions`
+- **Fields:** `vehicleNo`, `tripId`, `timestamp`, `lastStopTimestamp`, `latitude`, `longitude`, `speedMps`, `bearingDeg`, `gpsAccuracyMeters`
+- **Create:**
+  ```bash
+  curl -X POST http://localhost:8080/vehicle-positions \
+    -H 'Content-Type: application/json' \
+    -d '{
+          "vehicleNo": "bus_001",
+          "tripId": 42,
+          "timestamp": "2024-01-15T08:03:00Z",
+          "lastStopTimestamp": "2024-01-15T08:02:30Z",
+          "latitude": 55.751,
+          "longitude": 37.618,
+          "speedMps": 12.3,
+          "bearingDeg": 182.0,
+          "gpsAccuracyMeters": 5.0
+        }'
   ```
 
 ### Stop Times `/stop-times`
@@ -131,7 +151,7 @@ Composite identifiers use nested paths: `/stop-times/{tripId}/{sequence}` and `/
   ```
 
 ### Geo Events `/geo-events`
-- **Fields:** `id`, `tripId`, `userId`, `timestamp`, `latitude`, `longitude`, `gpsAccuracyMeters`, `type`
+- **Fields:** `id`, `tripId`, `vehicleNo`, `userId`, `timestamp`, `latitude`, `longitude`, `gpsAccuracyMeters`, `type`
 - **Response example:**
   ```json
   {
@@ -147,10 +167,10 @@ Composite identifiers use nested paths: `/stop-times/{tripId}/{sequence}` and `/
   ```
 
 ### Timetable Events `/timetable-events`
-- **Fields:** `id`, `tripId`, `userId`, `timestamp`, `latitude`, `longitude`, `gpsAccuracyMeters`, `type`, `reportedTime`
+- **Fields:** `id`, `tripId`, `vehicleNo`, `userId`, `timestamp`, `latitude`, `longitude`, `gpsAccuracyMeters`, `type`, `reportedTime`
 
 ### Anomalies `/anomalies`
-- **Fields:** `id`, `tripId`, `userId`, `timestamp`, `latitude`, `longitude`, `gpsAccuracyMeters`, `type`, `estimatedDelay`
+- **Fields:** `id`, `tripId`, `vehicleNo`, `userId`, `timestamp`, `latitude`, `longitude`, `gpsAccuracyMeters`, `type`, `estimatedDelay`
 
 ### Shape IDs `/shape-ids`
 - **Fields:** `id`
@@ -181,6 +201,29 @@ Use this helper endpoint to pull the latest realtime events without juggling ind
   curl "http://localhost:8080/events/geolocation?since=2024-01-15T08:00:00Z"
   ```
 - **Response:** array of the same DTOs returned by `/geo-events`, `/timetable-events`, or `/anomalies` (only data columns, no wrappers).
+
+## Timetable (Schedule)
+Endpoints to power the "Расписание" tab: select a date (or weekday) to see available routes, then fetch trips with stop sequences for a route and date.
+
+- `GET /timetable/routes?date=YYYY-MM-DD`
+  - Returns routes (as `RouteDto`) that have trips active on the specified date.
+- `GET /timetable/routes?weekday=Mon|Tue|Wed|Thu|Fri|Sat|Sun`
+  - Returns routes active by weekday flag from `calendar` (does not consider date ranges).
+- `GET /timetable/routes/{routeId}/trips?date=YYYY-MM-DD`
+  - Returns a list of trip schedules for the route on the date, sorted by `startTime`.
+  - Each item is:
+    ```json
+    {
+      "tripId": 42,
+      "routeId": "100A",
+      "startTime": "2024-01-15T08:00:00Z",
+      "stops": [
+        {"stopSequence": 1, "stopId": "STOP_001", "stopName": "Central", "arrivalTime": 0,   "departureTime": 30},
+        {"stopSequence": 2, "stopId": "STOP_002", "stopName": "Main St", "arrivalTime": 600, "departureTime": 630}
+      ]
+    }
+    ```
+  - Time fields in stops are integers in seconds from midnight (GTFS semantics; may exceed 86400 for overnight trips).
 
 ## Testing Checklist
 1. Start PostgreSQL with the expected schema/data.

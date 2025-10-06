@@ -15,9 +15,9 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         val apiBaseValue = providers.gradleProperty("local.api.base")
-            .orElse("http://10.0.2.2:8081/")
+            .orElse("http://10.0.2.2:8080/")
             .get()
-        buildConfigField("String", "DEFAULT_API_BASE_URL", "\"${'$'}apiBaseValue\"")
+        buildConfigField("String", "DEFAULT_API_BASE_URL", "\"$apiBaseValue\"")
     }
 
     buildTypes {

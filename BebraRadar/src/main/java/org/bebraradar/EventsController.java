@@ -57,6 +57,7 @@ public class EventsController {
             .map(event -> new GeoEventResponse(
                 event.getId(),
                 event.getTrip().getId(),
+                event.getVehicle() == null ? null : event.getVehicle().getVehicleNo(),
                 event.getUser() == null ? null : event.getUser().getId(),
                 event.getTimestamp(),
                 event.getLatitude(),
@@ -74,6 +75,7 @@ public class EventsController {
             .map(event -> new TimetableEventResponse(
                 event.getId(),
                 event.getTrip().getId(),
+                event.getVehicle() == null ? null : event.getVehicle().getVehicleNo(),
                 event.getUser() == null ? null : event.getUser().getId(),
                 event.getTimestamp(),
                 event.getLatitude(),
@@ -92,6 +94,7 @@ public class EventsController {
             .map(event -> new AnomalyResponse(
                 event.getId(),
                 event.getTrip().getId(),
+                event.getVehicle() == null ? null : event.getVehicle().getVehicleNo(),
                 event.getUser() == null ? null : event.getUser().getId(),
                 event.getTimestamp(),
                 event.getLatitude(),

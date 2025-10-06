@@ -26,6 +26,10 @@ public class ExactTripEventGeoLocation {
     private Trip trip;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "vehicle_no")
+    private VehiclePositionCurrent vehicle;
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
     private UserAccount user;
 
@@ -64,6 +68,14 @@ public class ExactTripEventGeoLocation {
 
     public Trip getTrip() {
         return trip;
+    }
+
+    public VehiclePositionCurrent getVehicle() {
+        return vehicle;
+    }
+
+    public void setVehicle(VehiclePositionCurrent vehicle) {
+        this.vehicle = vehicle;
     }
 
     public void setTrip(Trip trip) {

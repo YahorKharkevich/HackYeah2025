@@ -60,6 +60,7 @@ public class AnomalyController {
             request.type(),
             request.estimatedDelay()
         );
+        entity.setVehicle(referenceResolver.resolveVehicleNullable(request.vehicleNo()));
         return toDto(repository.save(entity));
     }
 
@@ -70,6 +71,7 @@ public class AnomalyController {
         validate(request);
         entity.setTrip(referenceResolver.requireTrip(request.tripId()));
         entity.setUser(referenceResolver.resolveUserNullable(request.userId()));
+        entity.setVehicle(referenceResolver.resolveVehicleNullable(request.vehicleNo()));
         entity.setTimestamp(request.timestamp());
         entity.setLatitude(request.latitude());
         entity.setLongitude(request.longitude());
@@ -91,9 +93,11 @@ public class AnomalyController {
 
     private static AnomalyResponse toDto(ExactTripAnomaly entity) {
         Long userId = entity.getUser() == null ? null : entity.getUser().getId();
+        String vehicleNo = entity.getVehicle() == null ? null : entity.getVehicle().getVehicleNo();
         return new AnomalyResponse(
             entity.getId(),
             entity.getTrip().getId(),
+            vehicleNo,
             userId,
             entity.getTimestamp(),
             entity.getLatitude(),

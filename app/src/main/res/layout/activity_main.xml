@@ -89,6 +89,22 @@
                 app:iconPadding="0dp"
                 app:iconTint="@color/text_primary" />
 
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/navScheduleButton"
+                style="@style/Widget.MaterialComponents.Button.TextButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:checkable="true"
+                android:contentDescription="@string/nav_schedule_cd"
+                android:minWidth="0dp"
+                android:gravity="center"
+                android:text=""
+                app:icon="@drawable/ic_schedule"
+                app:iconGravity="textStart"
+                app:iconPadding="0dp"
+                app:iconTint="@color/text_primary" />
+
         </com.google.android.material.button.MaterialButtonToggleGroup>
 
     </com.google.android.material.card.MaterialCardView>

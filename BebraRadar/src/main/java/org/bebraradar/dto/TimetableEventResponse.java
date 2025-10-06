@@ -4,6 +4,7 @@ import java.time.OffsetDateTime;
 
 public record TimetableEventResponse(Long id,
                                      Long tripId,
+                                     String vehicleNo,
                                      Long userId,
                                      OffsetDateTime timestamp,
                                      Double latitude,
