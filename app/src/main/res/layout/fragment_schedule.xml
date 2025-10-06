@@ -1,109 +1,294 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:padding="16dp">
+    android:layout_height="match_parent">
+
+    <org.osmdroid.views.MapView
+        android:id="@+id/scheduleMapView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone" />
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical">
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:padding="16dp">
 
-        <TextView
-            android:id="@+id/dateText"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
             android:layout_weight="1"
-            android:textAppearance="@style/TextAppearance.MaterialComponents.Subtitle1"
-            android:textColor="@color/text_primary"
-            android:textStyle="bold" />
+            app:cardCornerRadius="20dp"
+            app:cardElevation="6dp">
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/pickDateButton"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/schedule_pick_date" />
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
+
+                <!-- Routes list state -->
+                <LinearLayout
+                    android:id="@+id/routesContent"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:orientation="vertical"
+                    android:padding="20dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            android:id="@+id/dateText"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:textAppearance="@style/TextAppearance.MaterialComponents.Subtitle1"
+                            android:textColor="@color/text_primary"
+                            android:textStyle="bold"
+                            android:text="2025-10-06" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/pickDateButton"
+                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/schedule_pick_date" />
+                    </LinearLayout>
+
+                    <com.google.android.material.chip.ChipGroup
+                        android:id="@+id/weekdayGroup"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        app:chipSpacingHorizontal="4dp"
+                        app:chipSpacingVertical="4dp"
+                        app:singleLine="true"
+                        app:singleSelection="true">
+
+                        <com.google.android.material.chip.Chip
+                            android:id="@+id/chipMon"
+                            style="@style/Widget.MaterialComponents.Chip.Filter"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Mon" />
+                        <com.google.android.material.chip.Chip
+                            android:id="@+id/chipTue"
+                            style="@style/Widget.MaterialComponents.Chip.Filter"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Tue" />
+                        <com.google.android.material.chip.Chip
+                            android:id="@+id/chipWed"
+                            style="@style/Widget.MaterialComponents.Chip.Filter"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Wed" />
+                        <com.google.android.material.chip.Chip
+                            android:id="@+id/chipThu"
+                            style="@style/Widget.MaterialComponents.Chip.Filter"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Thu" />
+                        <com.google.android.material.chip.Chip
+                            android:id="@+id/chipFri"
+                            style="@style/Widget.MaterialComponents.Chip.Filter"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Fri" />
+                        <com.google.android.material.chip.Chip
+                            android:id="@+id/chipSat"
+                            style="@style/Widget.MaterialComponents.Chip.Filter"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Sat" />
+                        <com.google.android.material.chip.Chip
+                            android:id="@+id/chipSun"
+                            style="@style/Widget.MaterialComponents.Chip.Filter"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Sun" />
+                    </com.google.android.material.chip.ChipGroup>
+
+                    <TextView
+                        android:id="@+id/headerText"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="16dp"
+                        android:textAppearance="@style/TextAppearance.MaterialComponents.Headline6"
+                        android:textColor="@color/text_primary"
+                        android:text="@string/schedule_routes_header" />
+
+                    <androidx.recyclerview.widget.RecyclerView
+                        android:id="@+id/routesRecycler"
+                        android:layout_width="match_parent"
+                        android:layout_height="0dp"
+                        android:layout_marginTop="12dp"
+                        android:layout_weight="1" />
+                </LinearLayout>
+
+                <!-- Detail state -->
+                <LinearLayout
+                    android:id="@+id/detailContent"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:orientation="vertical"
+                    android:padding="20dp"
+                    android:visibility="gone">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <com.google.android.material.card.MaterialCardView
+                            android:layout_width="80dp"
+                            android:layout_height="104dp"
+                            android:layout_marginEnd="16dp"
+                            app:cardBackgroundColor="@color/primary_blue"
+                            app:cardCornerRadius="20dp"
+                            app:cardElevation="0dp"
+                            app:strokeColor="@android:color/transparent">
+
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:gravity="center"
+                                android:orientation="vertical"
+                                android:padding="12dp">
+
+                                <ImageView
+                                    android:id="@+id/detailRouteIcon"
+                                    android:layout_width="32dp"
+                                    android:layout_height="32dp"
+                                    android:contentDescription="@string/schedule_route_icon_cd"
+                                    android:src="@drawable/ic_bus"
+                                    android:tint="@android:color/white" />
+
+                                <TextView
+                                    android:id="@+id/detailRouteBadge"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="8dp"
+                                    android:textColor="@android:color/white"
+                                    android:textSize="20sp"
+                                    android:textStyle="bold"
+                                    android:text="173" />
+                            </LinearLayout>
+                        </com.google.android.material.card.MaterialCardView>
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:id="@+id/detailDirectionLabel"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:textColor="@color/primary_blue"
+                                android:textSize="12sp"
+                                android:textStyle="bold"
+                                android:textAllCaps="true"
+                                android:text="@string/schedule_change_direction" />
+
+                            <TextView
+                                android:id="@+id/detailRouteTitle"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="4dp"
+                                android:textAppearance="@style/TextAppearance.MaterialComponents.Headline6"
+                                android:textColor="@color/text_primary"
+                                android:text="Route title" />
+
+                            <TextView
+                                android:id="@+id/detailRouteSubtitle"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="2dp"
+                                android:textColor="@color/primary_blue"
+                                android:textSize="14sp"
+                                android:textStyle="bold"
+                                android:text="Direction info" />
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="16dp"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:id="@+id/detailScheduleLabel"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/schedule_valid_from_label"
+                                android:textColor="@color/text_secondary"
+                                android:textSize="12sp"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:id="@+id/detailScheduleDate"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="4dp"
+                                android:background="@drawable/bg_schedule_date_chip"
+                                android:paddingHorizontal="16dp"
+                                android:paddingVertical="10dp"
+                                android:textColor="@android:color/white"
+                                android:textSize="14sp"
+                                android:textStyle="bold"
+                                android:text="2025.10.06" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <androidx.core.widget.NestedScrollView
+                        android:layout_width="match_parent"
+                        android:layout_height="0dp"
+                        android:layout_marginTop="16dp"
+                        android:layout_weight="1"
+                        android:fillViewport="true">
+
+                        <LinearLayout
+                            android:id="@+id/stopsContainer"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical" />
+                    </androidx.core.widget.NestedScrollView>
+
+                    <TextView
+                        android:id="@+id/detailTripsHeader"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:textColor="@color/text_primary"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:text="@string/schedule_trips_list_header" />
+
+                    <androidx.recyclerview.widget.RecyclerView
+                        android:id="@+id/detailTripsRecycler"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:nestedScrollingEnabled="false"
+                        android:layout_marginTop="8dp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/backButton"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="16dp"
+                        android:text="@string/schedule_back_to_routes" />
+                </LinearLayout>
+
+            </FrameLayout>
+        </com.google.android.material.card.MaterialCardView>
     </LinearLayout>
 
-    <com.google.android.material.chip.ChipGroup
-        android:id="@+id/weekdayGroup"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        app:chipSpacingHorizontal="4dp"
-        app:chipSpacingVertical="4dp"
-        app:singleLine="true"
-        app:singleSelection="true">
-
-        <com.google.android.material.chip.Chip
-            android:id="@+id/chipMon"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            style="@style/Widget.MaterialComponents.Chip.Filter"
-            android:text="Mon" />
-        <com.google.android.material.chip.Chip
-            android:id="@+id/chipTue"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            style="@style/Widget.MaterialComponents.Chip.Filter"
-            android:text="Tue" />
-        <com.google.android.material.chip.Chip
-            android:id="@+id/chipWed"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            style="@style/Widget.MaterialComponents.Chip.Filter"
-            android:text="Wed" />
-        <com.google.android.material.chip.Chip
-            android:id="@+id/chipThu"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            style="@style/Widget.MaterialComponents.Chip.Filter"
-            android:text="Thu" />
-        <com.google.android.material.chip.Chip
-            android:id="@+id/chipFri"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            style="@style/Widget.MaterialComponents.Chip.Filter"
-            android:text="Fri" />
-        <com.google.android.material.chip.Chip
-            android:id="@+id/chipSat"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            style="@style/Widget.MaterialComponents.Chip.Filter"
-            android:text="Sat" />
-        <com.google.android.material.chip.Chip
-            android:id="@+id/chipSun"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            style="@style/Widget.MaterialComponents.Chip.Filter"
-            android:text="Sun" />
-    </com.google.android.material.chip.ChipGroup>
-
-    <TextView
-        android:id="@+id/headerText"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        android:textAppearance="@style/TextAppearance.MaterialComponents.Headline6"
-        android:textColor="@color/text_primary" />
-
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/scheduleRecycler"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_marginTop="12dp"
-        android:layout_weight="1" />
-
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/backButton"
-        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="@string/schedule_back_to_routes"
-        android:visibility="gone" />
-
-</LinearLayout>
+</FrameLayout>

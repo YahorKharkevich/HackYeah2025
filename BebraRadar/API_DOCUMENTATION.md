@@ -218,8 +218,24 @@ Endpoints to power the "Расписание" tab: select a date (or weekday) to
       "routeId": "100A",
       "startTime": "2024-01-15T08:00:00Z",
       "stops": [
-        {"stopSequence": 1, "stopId": "STOP_001", "stopName": "Central", "arrivalTime": 0,   "departureTime": 30},
-        {"stopSequence": 2, "stopId": "STOP_002", "stopName": "Main St", "arrivalTime": 600, "departureTime": 630}
+        {
+          "stopSequence": 1,
+          "stopId": "STOP_001",
+          "stopName": "Central",
+          "latitude": 55.7558,
+          "longitude": 37.6176,
+          "arrivalTime": 0,
+          "departureTime": 30
+        },
+        {
+          "stopSequence": 2,
+          "stopId": "STOP_002",
+          "stopName": "Main St",
+          "latitude": 55.7600,
+          "longitude": 37.6300,
+          "arrivalTime": 600,
+          "departureTime": 630
+        }
       ]
     }
     ```

@@ -53,6 +53,13 @@
     <string name="schedule_no_routes">No routes for selected date</string>
     <string name="schedule_no_trips">No trips for this route</string>
     <string name="schedule_trip_title">Trip %1$s</string>
+    <string name="schedule_direction_format">%1$s - %2$s</string>
+    <string name="schedule_minutes_label">%1$d min</string>
+    <string name="schedule_valid_from">%1$s</string>
+    <string name="schedule_change_direction">Change direction:</string>
+    <string name="schedule_valid_from_label">Schedule valid from:</string>
+    <string name="schedule_route_icon_cd">Route icon</string>
+    <string name="schedule_trips_list_header">Trips</string>
     <string name="schedule_stop_line">%1$s. %2$s (%3$s)
 Arr: %4$s  Dep: %5$s</string>
     <string name="schedule_dialog_close">Close</string>
